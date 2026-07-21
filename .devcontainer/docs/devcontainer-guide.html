@@ -1,0 +1,954 @@
+<title>.devcontainer 解読ノート — generate-deck Sandbox</title>
+<style>
+  :root {
+    --bg: #eef1f3;
+    --bg-elevated: #ffffff;
+    --bg-code: #16212c;
+    --bg-code-line: #1c2a37;
+    --ink: #172129;
+    --ink-dim: #56666f;
+    --ink-faint: #8b98a1;
+    --rule: rgba(23, 33, 41, 0.12);
+    --accent: #0e7c80;
+    --accent-soft: #d9eeee;
+    --allow: #2f8f4e;
+    --allow-soft: #e2f3e6;
+    --deny: #b8432c;
+    --deny-soft: #fbe6e0;
+    --code-ink: #dfe8ec;
+    --code-dim: #7d92a0;
+    --code-accent: #7fd8d1;
+    --code-string: #e2b872;
+    --shadow: 0 1px 2px rgba(23,33,41,0.06), 0 8px 24px -12px rgba(23,33,41,0.18);
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Hiragino Mincho ProN", serif;
+    --sans-jp: "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1720;
+      --bg-elevated: #16212c;
+      --bg-code: #0b131a;
+      --bg-code-line: #121d26;
+      --ink: #e8ecef;
+      --ink-dim: #9aa7b0;
+      --ink-faint: #66747d;
+      --rule: rgba(232, 236, 239, 0.1);
+      --accent: #5fd0d3;
+      --accent-soft: rgba(95, 208, 211, 0.13);
+      --allow: #7fd08f;
+      --allow-soft: rgba(127, 208, 143, 0.13);
+      --deny: #e2685a;
+      --deny-soft: rgba(226, 104, 90, 0.14);
+      --code-ink: #dfe8ec;
+      --code-dim: #6c7f8c;
+      --code-accent: #7fd8d1;
+      --code-string: #e2b872;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -16px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1720; --bg-elevated: #16212c; --bg-code: #0b131a; --bg-code-line: #121d26;
+    --ink: #e8ecef; --ink-dim: #9aa7b0; --ink-faint: #66747d; --rule: rgba(232, 236, 239, 0.1);
+    --accent: #5fd0d3; --accent-soft: rgba(95, 208, 211, 0.13);
+    --allow: #7fd08f; --allow-soft: rgba(127, 208, 143, 0.13);
+    --deny: #e2685a; --deny-soft: rgba(226, 104, 90, 0.14);
+    --code-ink: #dfe8ec; --code-dim: #6c7f8c; --code-accent: #7fd8d1; --code-string: #e2b872;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -16px rgba(0,0,0,0.6);
+  }
+  :root[data-theme="light"] {
+    --bg: #eef1f3; --bg-elevated: #ffffff; --bg-code: #16212c; --bg-code-line: #1c2a37;
+    --ink: #172129; --ink-dim: #56666f; --ink-faint: #8b98a1; --rule: rgba(23, 33, 41, 0.12);
+    --accent: #0e7c80; --accent-soft: #d9eeee;
+    --allow: #2f8f4e; --allow-soft: #e2f3e6;
+    --deny: #b8432c; --deny-soft: #fbe6e0;
+    --code-ink: #dfe8ec; --code-dim: #7d92a0; --code-accent: #7fd8d1; --code-string: #e2b872;
+    --shadow: 0 1px 2px rgba(23,33,41,0.06), 0 8px 24px -12px rgba(23,33,41,0.18);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif), var(--sans-jp);
+    line-height: 1.75;
+    font-size: 17px;
+    overflow-x: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  a { color: var(--accent); }
+
+  h1, h2, h3, .mono-label {
+    font-family: var(--mono);
+    text-wrap: balance;
+  }
+
+  /* ---------- Shell layout ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  @media (max-width: 880px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2.5rem 1.25rem 2rem 1.5rem;
+    border-right: 1px solid var(--rule);
+  }
+  @media (max-width: 880px) {
+    nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 1.5rem; }
+  }
+  .toc-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 1rem;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: toc;
+  }
+  nav.toc li {
+    counter-increment: toc;
+    margin: 0 0 0.65rem;
+  }
+  nav.toc a {
+    display: flex;
+    gap: 0.55rem;
+    color: var(--ink-dim);
+    text-decoration: none;
+    font-size: 0.86rem;
+    font-family: var(--mono);
+    line-height: 1.4;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--ink-faint);
+    flex: none;
+  }
+  nav.toc .toc-sub {
+    margin: 0.35rem 0 0 1.35rem;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  main { min-width: 0; padding: 0 1.75rem 6rem; }
+
+  /* ---------- Header ---------- */
+  header.hero {
+    padding: 3.2rem 0 2.4rem;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 2.6rem;
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+  header.hero h1 {
+    font-size: clamp(1.7rem, 4vw, 2.5rem);
+    line-height: 1.28;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+  }
+  header.hero .lede {
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    color: var(--ink-dim);
+    max-width: 60ch;
+    margin: 0 0 1.6rem;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    color: var(--ink-dim);
+    background: var(--bg-elevated);
+  }
+
+  /* ---------- Sections ---------- */
+  section { margin-bottom: 3.6rem; scroll-margin-top: 1.5rem; }
+  section > .section-head { margin-bottom: 1.4rem; }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+  .section-sub {
+    color: var(--ink-dim);
+    font-family: var(--serif);
+    max-width: 62ch;
+    margin: 0;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 2rem 0 0.8rem;
+    color: var(--ink);
+  }
+  p { max-width: 66ch; }
+  p.note { max-width: 66ch; color: var(--ink-dim); }
+
+  /* ---------- Diagram ---------- */
+  .diagram {
+    background: var(--bg-elevated);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    padding: 1.6rem 1.4rem;
+    margin: 1.6rem 0 2rem;
+  }
+  .diagram-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  @media (max-width: 640px) {
+    .diagram-row { grid-template-columns: 1fr; }
+    .diagram-arrow { transform: rotate(90deg); margin: 0.2rem auto; }
+  }
+  .dbox {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 0.9rem 0.9rem;
+    background: var(--bg);
+  }
+  .dbox .dbox-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .dbox .dbox-title {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+  .dbox.host { border-top: 3px solid var(--ink-faint); }
+  .dbox.container { border-top: 3px solid var(--accent); }
+  .dbox ul { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; color: var(--ink-dim); }
+  .diagram-arrow {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 1.3rem;
+    text-align: center;
+  }
+  .egress-strip {
+    margin-top: 1.4rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.6rem;
+  }
+  .egress-item {
+    border-radius: 5px;
+    padding: 0.55rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .egress-item.allow { background: var(--allow-soft); color: var(--allow); }
+  .egress-item.deny { background: var(--deny-soft); color: var(--deny); text-decoration: line-through; opacity: 0.85; }
+  .egress-item .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* ---------- Code blocks ---------- */
+  .code-panel {
+    background: var(--bg-code);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin: 1.1rem 0;
+  }
+  .code-panel .file-tag {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--code-dim);
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-between;
+  }
+  .code-panel pre {
+    margin: 0;
+    padding: 1rem 1.15rem 1.2rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.68;
+    color: var(--code-ink);
+    tab-size: 2;
+  }
+  .code-panel .c { color: var(--code-dim); }
+  .code-panel .k { color: var(--code-accent); }
+  .code-panel .s { color: var(--code-string); }
+
+  /* ---------- Annotation table ---------- */
+  .annolist { display: flex; flex-direction: column; gap: 0; margin: 1.6rem 0; }
+  .anno {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .anno:last-child { border-bottom: 1px solid var(--rule); }
+  .anno code.inline {
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0.12rem 0.4rem;
+    border-radius: 3px;
+  }
+  .anno .anno-title { font-weight: 700; font-family: var(--sans-jp); }
+  .anno p { margin: 0.15rem 0 0; color: var(--ink-dim); font-size: 0.96rem; max-width: 62ch; }
+
+  /* ---------- Stepper (firewall walkthrough) ---------- */
+  .stepper { counter-reset: step; margin: 1.6rem 0; }
+  .step {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.2rem 1fr;
+    gap: 0 1rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--bg-elevated);
+    background: var(--ink-faint);
+    width: 1.9rem; height: 1.9rem;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1;
+  }
+  .step.allow::before { background: var(--allow); }
+  .step.deny::before { background: var(--deny); }
+  .step.neutral::before { background: var(--accent); }
+  .step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 0.95rem;
+    top: 2rem;
+    bottom: -1.1rem;
+    width: 1px;
+    background: var(--rule);
+  }
+  .step-body { padding-bottom: 1.9rem; }
+  .step-title { font-weight: 700; font-family: var(--sans-jp); margin: 0.15rem 0 0.35rem; font-size: 1rem; }
+  .step-body p { margin: 0.4rem 0; font-size: 0.96rem; color: var(--ink-dim); }
+  .step-body .code-panel { margin: 0.7rem 0 0.5rem; }
+
+  /* ---------- Why callout ---------- */
+  .callout {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    padding: 1.1rem 1.3rem;
+    margin: 1.6rem 0;
+  }
+  .callout.warn { border-left-color: var(--deny); background: var(--deny-soft); }
+  .callout .callout-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.5rem;
+  }
+  .callout.warn .callout-label { color: var(--deny); }
+  .callout p { margin: 0.3rem 0; max-width: 62ch; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; margin: 1.4rem 0; border: 1px solid var(--rule); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 480px; }
+  th, td { text-align: left; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); background: var(--bg-elevated); }
+  tr:last-child td { border-bottom: none; }
+  td code { font-family: var(--mono); font-size: 0.82rem; color: var(--accent); }
+
+  /* ---------- Glossary ---------- */
+  .glossary { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1.2rem 1.6rem; margin: 1.4rem 0; }
+  .gterm dt { font-family: var(--mono); font-weight: 700; font-size: 0.88rem; color: var(--accent); }
+  .gterm dd { margin: 0.25rem 0 0; font-size: 0.88rem; color: var(--ink-dim); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 0.76rem;
+  }
+</style>
+
+<div class="shell">
+  <nav class="toc">
+    <p class="toc-eyebrow">目次</p>
+    <ol>
+      <li><a href="#overview">全体像</a></li>
+      <li><a href="#devcontainer-json">devcontainer.json</a></li>
+      <li><a href="#dockerfile">Dockerfile</a></li>
+      <li><a href="#firewall">init-firewall.sh</a>
+        <div class="toc-sub">iptables による egress 制限</div>
+      </li>
+      <li><a href="#why">なぜここまでやるか</a></li>
+      <li><a href="#glossary">用語集</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <p class="kicker">Devcontainer Walkthrough — Beginner Guide</p>
+      <h1>.devcontainer の中身を、上から順に読み解く</h1>
+      <p class="lede">
+        このリポジトリの <code style="font-family:var(--mono)">.devcontainer/</code> は、Claude Code を
+        <code style="font-family:var(--mono)">--dangerously-skip-permissions</code>（確認なし実行）で動かすための
+        使い捨てサンドボックスを定義している。何が起きているかを、devcontainer.json → Dockerfile → firewallスクリプトの順に、
+        1行ずつ「なぜそう書いてあるか」まで追っていく。
+      </p>
+      <div class="meta-row">
+        <span class="chip">devcontainer.json</span>
+        <span class="chip">Dockerfile</span>
+        <span class="chip">init-firewall.sh</span>
+        <span class="chip">iptables / ipset</span>
+      </div>
+    </header>
+
+    <section id="overview">
+      <div class="section-head">
+        <span class="section-num">Overview</span>
+        <h2>全体像 — なぜコンテナに閉じ込めるのか</h2>
+        <p class="section-sub">
+          Claude Code に「毎回の確認なしでファイル操作・コマンド実行を許可する」と、
+          誤操作やプロンプトインジェクションでホストPCが壊れるリスクが生まれる。
+          そこで「ホストのファイルシステムには触れない・外部との通信も絞る」箱を用意し、その中でだけ全権限を渡す。
+        </p>
+      </div>
+
+      <div class="diagram">
+        <div class="diagram-row">
+          <div class="dbox host">
+            <span class="dbox-label">Host</span>
+            <span class="dbox-title">Mac (あなたのPC)</span>
+            <ul>
+              <li>generate-deck リポジトリ (~/generate-deck)</li>
+              <li>~/.claude （認証情報）</li>
+              <li>~/.ssh, その他すべて</li>
+            </ul>
+          </div>
+          <div class="diagram-arrow">bind mount<br>→</div>
+          <div class="dbox container">
+            <span class="dbox-label">Container</span>
+            <span class="dbox-title">node:20 + Claude Code</span>
+            <ul>
+              <li>リポジトリだけを /workspaces にマウント</li>
+              <li>認証情報は専用volumeのみ</li>
+              <li>node（非root）で実行</li>
+            </ul>
+          </div>
+          <div class="diagram-arrow">egress<br>firewall</div>
+          <div class="dbox">
+            <span class="dbox-label">Network</span>
+            <span class="dbox-title">外部通信</span>
+            <ul>
+              <li>デフォルト全拒否</li>
+              <li>許可リストのみ通す</li>
+            </ul>
+          </div>
+        </div>
+        <div class="egress-strip">
+          <div class="egress-item allow"><span class="dot"></span>api.github.com</div>
+          <div class="egress-item allow"><span class="dot"></span>registry.npmjs.org</div>
+          <div class="egress-item allow"><span class="dot"></span>api.anthropic.com</div>
+          <div class="egress-item deny"><span class="dot"></span>それ以外の任意サーバ</div>
+        </div>
+      </div>
+
+      <p class="note">
+        つまりコンテナは「リポジトリのファイルは自由にいじれるが、それ以外のホスト資産には手が届かず、
+        外部への通信も許可リストに限定される」箱になっている。以下、この箱を組み立てている3つのファイルを順に見ていく。
+      </p>
+    </section>
+
+    <section id="devcontainer-json">
+      <div class="section-head">
+        <span class="section-num">01 / Config</span>
+        <h2>devcontainer.json — 箱の「仕様書」</h2>
+        <p class="section-sub">
+          VS Code の Dev Containers 拡張機能が読む設定ファイル。「どのDockerfileでビルドするか」
+          「何をマウントするか」「起動時に何を実行するか」を宣言する。コード自体は実行されない、純粋な設定。
+        </p>
+      </div>
+
+      <div class="annolist">
+        <div class="anno">
+          <span class="anno-title"><code class="inline">build.args</code></span>
+          <p>Dockerfile に渡す変数。バージョン番号などをここで一元管理し、Dockerfile本体を書き換えずに更新できるようにしている。</p>
+        </div>
+        <div class="anno">
+          <span class="anno-title"><code class="inline">runArgs: --cap-add=NET_ADMIN / NET_RAW</code></span>
+          <p>
+            Dockerコンテナは初期状態で「ネットワーク設定を変更する権限」を持たない。
+            後述の firewall スクリプトは iptables でパケットフィルタのルールを書き換えるため、
+            この2つの capability（Linuxカーネルの権限フラグ）を明示的に追加しないと動かない。
+          </p>
+        </div>
+        <div class="anno">
+          <span class="anno-title"><code class="inline">remoteUser: "node"</code></span>
+          <p>
+            root ではなく node（非root）ユーザーでシェルに入る設定。
+            Claude Code は root での <code class="inline">--dangerously-skip-permissions</code> 実行を拒否する仕様があるため必須。
+            rootで確認なし実行ができてしまうと、コンテナ内の被害範囲がroot権限まで広がってしまう。
+          </p>
+        </div>
+        <div class="anno">
+          <span class="anno-title"><code class="inline">postStartCommand / waitFor</code></span>
+          <p>
+            コンテナ起動のたびに <code class="inline">sudo init-firewall.sh</code> を実行し、その完了を待ってから使えるようにする。
+            firewallの構築に失敗した場合はここでエラーになり、コンテナが「firewallなしで使える」状態にはならない。
+          </p>
+        </div>
+      </div>
+
+      <h3>mounts — 何を持ち込み、何を持ち込まないか</h3>
+      <p class="note">4つのマウントはそれぞれ役割が違う。特に3・4番目は「壊れたときの被害範囲」を狭めるための設計。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>マウント元</th><th>マウント先</th><th>目的</th></tr></thead>
+          <tbody>
+            <tr><td><code>claude-deck-bashhistory-*</code>(volume)</td><td>/commandhistory</td><td>シェル履歴をリビルド後も保持</td></tr>
+            <tr><td><code>claude-deck-config-*</code>(volume)</td><td>/home/node/.claude</td><td>Claude Codeの認証トークンを保持。<b>ホストの~/.claudeとは別物</b>を新規に作る</td></tr>
+            <tr><td>~/.claude/CLAUDE.md（read-only bind）</td><td>/home/node/.claude/CLAUDE.md</td><td>グローバル運用ルールだけ共有。読み取り専用なので改変不可</td></tr>
+            <tr><td>./.devcontainer（read-only bind）</td><td>.../.devcontainer</td><td>設定ファイル自身を上書きマウントし、コンテナ内から書き換え不可にする</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <p class="callout-label">Why: なぜ ~/.claude を丸ごとマウントしないのか</p>
+        <p>
+          ホストの <code class="inline">~/.claude</code> には他プロジェクトの認証トークンや設定が入っている。
+          丸ごと共有すると、コンテナ内の何かが漏洩・悪用した場合にホスト側の認証情報まで巻き添えになる。
+          代わりに専用のvolumeを新規に作り、コンテナ内で改めてログインする構成にすることで被害を分離している。
+        </p>
+      </div>
+      <div class="callout">
+        <p class="callout-label">Why: なぜ .devcontainer 自体を read-only で上書きマウントするのか</p>
+        <p>
+          リポジトリ全体は読み書き可能（rw）でマウントされているため、対策がないと
+          コンテナ内から <code class="inline">devcontainer.json</code> 自身を書き換えられてしまう。
+          もし「次回リビルド時にホームディレクトリ全体をマウントする」よう仕込まれると、
+          リビルドした瞬間にホストの他の場所まで筒抜けになる。設定ファイル自身を読み取り専用で
+          重ねてマウントすることで、この「未来の自分を騙す」経路を塞いでいる。
+        </p>
+      </div>
+    </section>
+
+    <section id="dockerfile">
+      <div class="section-head">
+        <span class="section-num">02 / Build</span>
+        <h2>Dockerfile — 箱の「中身」を組み立てる</h2>
+        <p class="section-sub">
+          Node.js 20 の公式イメージを土台に、開発に必要なコマンド群とClaude Code CLIを順にインストールしていく。
+          何をどの順で足しているか、レイヤーごとに見ていく。
+        </p>
+      </div>
+
+      <h3>apt-get install — なぜこの面子なのか</h3>
+      <div class="code-panel">
+        <div class="file-tag"><span>Dockerfile</span><span>L9–29</span></div>
+        <pre><span class="c"># Install basic development tools and iptables/ipset</span>
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+  less git procps sudo fzf zsh man-db unzip gnupg2 gh \
+  <span class="k">iptables ipset iproute2 dnsutils aggregate</span> \
+  jq ripgrep nano vim \
+  &amp;&amp; apt-get clean &amp;&amp; rm -rf /var/lib/apt/lists/*</pre>
+      </div>
+      <div class="annolist">
+        <div class="anno">
+          <span class="anno-title">日常の開発ツール</span>
+          <p><code class="inline">git</code> / <code class="inline">gh</code>（GitHub CLI）/ <code class="inline">jq</code>（JSON整形）/ <code class="inline">ripgrep</code>（高速grep）/ <code class="inline">vim</code>・<code class="inline">nano</code> など、Claude Codeが作業中に叩く基本コマンド群。</p>
+        </div>
+        <div class="anno">
+          <span class="anno-title"><code class="inline">iptables / ipset / iproute2 / dnsutils / aggregate</code> — このDockerfileの核心</span>
+          <p>
+            これらはfirewallを組むための道具そのもの。<code class="inline">iptables</code>でパケットフィルタルールを書き、
+            <code class="inline">ipset</code>で「許可IPの集合」を高速に管理し、<code class="inline">dnsutils</code>（digコマンド）でドメイン名をIPに変換し、
+            <code class="inline">aggregate</code>でIPレンジをまとめる。後述の <code class="inline">init-firewall.sh</code> はこれらが無いと1行も動かない。
+          </p>
+        </div>
+        <div class="anno">
+          <span class="anno-title"><code class="inline">--no-install-recommends</code> と <code class="inline">rm -rf /var/lib/apt/lists/*</code></span>
+          <p>推奨パッケージまで芋づる式に入れず、apt自体のキャッシュも消してイメージサイズを抑える定石。動作には影響しない。</p>
+        </div>
+      </div>
+
+      <h3>git-delta を GitHub Releases から直接落とす</h3>
+      <div class="code-panel">
+        <div class="file-tag"><span>Dockerfile</span><span>L50–54</span></div>
+        <pre>ARG GIT_DELTA_VERSION=0.18.2
+RUN ARCH=$(dpkg --print-architecture) &amp;&amp; \
+  wget "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" &amp;&amp; \
+  dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" &amp;&amp; \
+  rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"</pre>
+      </div>
+      <p class="note">
+        <b>git-delta</b>は <code class="inline">git diff</code> の出力を見やすく色分けするツール。Debianの標準リポジトリには入っていない（か古い）ため、
+        aptではなく開発元のGitHub Releasesから .deb パッケージを直接落として <code class="inline">dpkg -i</code> でインストールしている。
+        バージョンを <code class="inline">ARG</code> で固定しているのは、ビルドのたびに中身が変わらないようにするため。
+      </p>
+
+      <h3>非rootユーザーへの切り替えと、npmグローバル領域</h3>
+      <div class="annolist">
+        <div class="anno">
+          <span class="anno-title"><code class="inline">USER node</code> の前後</span>
+          <p>
+            ここまでのapt installやファイル配置はroot権限で行い、以降の作業（npm installやzsh設定）は
+            <code class="inline">USER node</code> 以降、非rootユーザーとして行う。最後にfirewallスクリプトの配置だけ
+            再び <code class="inline">USER root</code> に戻り、完了後また <code class="inline">USER node</code> に戻す — この行き来がレイヤーごとに明示されている。
+          </p>
+        </div>
+        <div class="anno">
+          <span class="anno-title"><code class="inline">NPM_CONFIG_PREFIX=/usr/local/share/npm-global</code></span>
+          <p>非rootユーザーのままグローバルnpmパッケージ（後述のClaude Code CLI）を書き込めるように、書き込み先を node ユーザー所有のディレクトリに変更している。</p>
+        </div>
+      </div>
+
+      <h3>zsh-in-docker と Claude Code CLI のインストール</h3>
+      <div class="code-panel">
+        <div class="file-tag"><span>Dockerfile</span><span>L71–84</span></div>
+        <pre><span class="c"># Default powerline10k theme</span>
+ARG ZSH_IN_DOCKER_VERSION=1.2.0
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
+  -p git -p fzf -x
+
+<span class="c"># Install Claude</span>
+RUN npm install -g <span class="s">@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}</span></pre>
+      </div>
+      <div class="callout warn">
+        <p class="callout-label">Note: wget | sh はサプライチェーンの信頼が前提</p>
+        <p>
+          <code class="inline">zsh-in-docker</code> はシェル環境（zsh + powerlevel10k）を1コマンドで整えるインストーラで、
+          「スクリプトをダウンロードしてそのままシェルに渡して実行する」形式。バージョンは固定しているが、
+          チェックサム検証まではしていない。ビルド時にネットワーク経由で取得したコードをそのまま実行する、という
+          性質は理解した上で使う必要がある。
+        </p>
+      </div>
+      <p class="note">
+        最後の <code class="inline">npm install -g @anthropic-ai/claude-code</code> が、このコンテナの主役であるClaude Code CLI本体のインストール。
+        これでコンテナ内から <code class="inline">claude</code> コマンドが使えるようになる。
+      </p>
+
+      <h3>firewallスクリプトの配置と sudo 権限の限定</h3>
+      <div class="code-panel">
+        <div class="file-tag"><span>Dockerfile</span><span>L86–92</span></div>
+        <pre>COPY init-firewall.sh /usr/local/bin/
+USER root
+RUN chmod +x /usr/local/bin/init-firewall.sh &amp;&amp; \
+  echo "node ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node-firewall &amp;&amp; \
+  chmod 0440 /etc/sudoers.d/node-firewall
+USER node</pre>
+      </div>
+      <p class="note">
+        node ユーザーに与える sudo 権限を「このfirewallスクリプト1本だけ、パスワード不要で実行可」に限定している。
+        node ユーザー（＝Claude自身が動かすシェル）が root 権限を持つのはこの一点のみで、他のコマンドをsudoで実行することはできない。
+      </p>
+    </section>
+
+    <section id="firewall">
+      <div class="section-head">
+        <span class="section-num">03 / Runtime</span>
+        <h2>init-firewall.sh — 起動のたびに箱を密閉する</h2>
+        <p class="section-sub">
+          コンテナが起動するたび（postStartCommand）に実行され、「まず全部の通信を拒否し、必要な穴だけを一つずつ開けていく」
+          という<b>デフォルト拒否（default-deny）</b>方式でegress（外向き通信）を制限する。上から順に実行される、実際の手順そのものを追う。
+        </p>
+      </div>
+
+      <div class="callout">
+        <p class="callout-label">先に：なぜ「許可リスト方式」なのか</p>
+        <p>
+          「危険なものだけ塞ぐ」ブロックリスト方式だと、想定していない新しい抜け道が常に残り続ける。
+          反対に「安全と確認できたものだけ通す」許可リスト方式なら、抜け道は原理的に「許可リストに載っているもの」に限定できる。
+          Claude Codeのようにコンテナ内で任意のコマンドを実行するエージェントを確認なしで動かす以上、後者でないと安心して使えない。
+        </p>
+      </div>
+
+      <div class="stepper">
+        <div class="step neutral">
+          <div class="step-body">
+            <p class="step-title">fail-close の罠を仕掛ける（trap ERR）</p>
+            <div class="code-panel">
+              <pre>fail_close() {
+    iptables -P INPUT DROP
+    iptables -P FORWARD DROP
+    iptables -P OUTPUT DROP
+    <span class="c"># ip6tablesも同様にDROP</span>
+}
+trap fail_close ERR</pre>
+            </div>
+            <p>
+              スクリプト全体に <code class="inline">set -euo pipefail</code> が効いており、途中でどのコマンドが失敗しても即座に
+              <code class="inline">fail_close</code> が発火し、全通信を強制遮断する。「構築の途中で失敗したら、firewallが無いまま
+              使えてしまう」状態（fail-open）を避けるための保険を、最初に仕掛けておく。
+            </p>
+          </div>
+        </div>
+
+        <div class="step neutral">
+          <div class="step-body">
+            <p class="step-title">既存ルールを全部フラッシュし、Docker内蔵DNSの経路だけ復元する</p>
+            <p>
+              <code class="inline">iptables -F / -X</code> で以前のルールをまっさらにする。ただしDockerが内部的に使う
+              DNS転送ルール（127.0.0.11宛）は先に退避しておき、フラッシュ後に選択的に戻す。これが無いとコンテナ内の名前解決自体が壊れる。
+            </p>
+          </div>
+        </div>
+
+        <div class="step deny">
+          <div class="step-body">
+            <p class="step-title">IPv6を無条件で全遮断する</p>
+            <p>
+              このスクリプトが制御するのはIPv4（iptables）のみ。IPv6が有効な環境ではIPv4のルールをすり抜けて
+              素通りしてしまう恐れがあるため、ip6tablesで INPUT / FORWARD / OUTPUT を丸ごとDROPし、
+              「IPv6は最初から使わせない」ことで対象外にしてしまう。
+            </p>
+          </div>
+        </div>
+
+        <div class="step deny">
+          <div class="step-body">
+            <p class="step-title">デフォルトポリシーを DROP に設定する</p>
+            <div class="code-panel">
+              <pre>iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP</pre>
+            </div>
+            <p>
+              ここが方式の要。「明示的に許可したルールに一致しない通信は、すべて落とす」という既定値を先に確定させる。
+              このあとの手順はすべて、この既定のDROPに対して穴を一つずつ空けていく作業になる。
+            </p>
+          </div>
+        </div>
+
+        <div class="step allow">
+          <div class="step-body">
+            <p class="step-title">localhostと戻り通信を許可する</p>
+            <p>
+              <code class="inline">lo</code>（ループバック）と、ESTABLISHED/RELATED（すでに成立した通信の戻りパケット）を許可する。
+              これが無いとコンテナ内のプロセス間通信すら止まってしまう、最低限の穴。
+            </p>
+          </div>
+        </div>
+
+        <div class="step allow">
+          <div class="step-body">
+            <p class="step-title">DNSは「実際に設定されているリゾルバ」宛だけ許可する</p>
+            <div class="code-panel">
+              <pre>DNS_SERVERS=$(awk <span class="s">'/^nameserver/ {print $2}'</span> /etc/resolv.conf)
+<span class="c"># ↓ /etc/resolv.confから取得した値だけをUDP 53で許可</span>
+iptables -A OUTPUT -p udp --dport 53 -d "$dns" -j ACCEPT</pre>
+            </div>
+            <p>
+              名前解決（ドメイン名→IP変換）に使うUDP 53番ポートを、任意の宛先にではなく
+              <code class="inline">/etc/resolv.conf</code> に書かれた実際のDNSサーバだけに絞って許可する。
+              もし任意の外部DNSサーバへの問い合わせを許してしまうと、DNSクエリにデータを埋め込んで外部に送る
+              「DNSトンネリング」という持ち出し手口の経路になってしまうため。
+            </p>
+          </div>
+        </div>
+
+        <div class="step allow">
+          <div class="step-body">
+            <p class="step-title">許可リストを組み立てる間だけ、HTTPS(443)を一時的に全開放する</p>
+            <p>
+              このあとGitHubのIPレンジをAPI経由で取得する必要があるが、その取得自体がまだ許可リストに
+              載っていない通信になってしまう「鶏と卵」問題がある。そこで一時的に443番だけ全宛先へ許可し、
+              許可リストが完成した時点（後述）でこの一時許可を撤回する。
+            </p>
+          </div>
+        </div>
+
+        <div class="step allow">
+          <div class="step-body">
+            <p class="step-title">GitHubのIPレンジをまるごと取得して ipset に登録する</p>
+            <div class="code-panel">
+              <pre>gh_ranges=$(curl -s https://api.github.com/meta)
+<span class="c"># .web / .api / .git / .pages のCIDRを集約して</span>
+echo "$gh_ranges" | jq -r <span class="s">'(.web + .api + .git + .pages)[]'</span> | aggregate -q</pre>
+            </div>
+            <p>
+              GitHubは <code class="inline">api.github.com/meta</code> という公開エンドポイントで、自社が使うIPレンジ一覧を公開している。
+              個別ドメインを1つずつ許可するのではなく、このAPIから正式なIPレンジをまとめて取得し、CIDR形式のまま
+              <code class="inline">ipset</code>（IPアドレス集合を高速マッチングできるカーネル機構）に登録する。git clone / push / gh コマンドが
+              使うIPを漏れなくカバーするための方式。
+            </p>
+          </div>
+        </div>
+
+        <div class="step allow">
+          <div class="step-body">
+            <p class="step-title">個別に許可した既知ドメインを名前解決して追加する</p>
+            <div class="code-panel">
+              <pre>for domain in \
+    "registry.npmjs.org" "api.anthropic.com" "claude.ai" \
+    "console.anthropic.com" "platform.claude.com" "sentry.io" \
+    "statsig.anthropic.com" "raw.githubusercontent.com" \
+    "marketplace.visualstudio.com" "..."; do
+    ips=$(dig +noall +answer A "$domain" | awk <span class="s">'$4 == "A" {print $5}'</span>)
+    ipset add -exist allowed-domains "$ip"
+done</pre>
+            </div>
+            <p>
+              npmパッケージ取得（registry.npmjs.org）、Claude Code自体の通信（api.anthropic.com / claude.ai / console.anthropic.com はOAuthのトークン交換に必須）、
+              エラー計測（sentry.io）などのために必要な最小限のドメインだけをホワイトリスト化する。
+              名前解決に失敗したドメイン（例: 廃止されたsub-domain）はスクリプト全体を止めず、警告だけ出してスキップする設計になっている。
+            </p>
+          </div>
+        </div>
+
+        <div class="step allow">
+          <div class="step-body">
+            <p class="step-title">一時許可を撤回し、ipset宛の通信だけを最終的に許可する</p>
+            <div class="code-panel">
+              <pre>iptables -D OUTPUT -p tcp --dport 443 -j ACCEPT   <span class="c"># 一時許可を削除</span>
+iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT</pre>
+            </div>
+            <p>
+              先に開けておいた「HTTPS全宛先許可」を削除（<code class="inline">-D</code>）し、代わりに ipset
+              <code class="inline">allowed-domains</code> に登録された宛先だけを許可するルールに差し替える。ここでようやく
+              「許可リストに載っているものだけ通る」状態が完成する。
+            </p>
+          </div>
+        </div>
+
+        <div class="step deny">
+          <div class="step-body">
+            <p class="step-title">それ以外の全outboundを明示的にREJECTする</p>
+            <div class="code-panel">
+              <pre>iptables -A OUTPUT -j REJECT --reject-with icmp-admin-prohibited</pre>
+            </div>
+            <p>
+              デフォルトポリシーは既にDROP（無言で捨てる）だが、末尾に明示的なREJECTルールを置くことで、
+              許可されなかった通信に対して「管理者により拒否された」というICMPエラーを即座に返す。
+              単に無応答でタイムアウトを待たせるより、Claude自身が「この通信は塞がれている」とすぐ判断できる。
+            </p>
+          </div>
+        </div>
+
+        <div class="step neutral">
+          <div class="step-body">
+            <p class="step-title">最後に、firewallが本当に機能しているか自己検証する</p>
+            <div class="code-panel">
+              <pre><span class="c"># 許可していないサイトには届かない、という前提を実際にテストする</span>
+curl --connect-timeout 5 https://example.com    <span class="c"># → 失敗するのが正解</span>
+curl --connect-timeout 5 https://api.github.com/zen  <span class="c"># → 成功するのが正解</span></pre>
+            </div>
+            <p>
+              許可リストに入れていない <code class="inline">example.com</code> には接続できず、許可リストに入っている
+              <code class="inline">api.github.com</code> には接続できる — この2つを実際に叩いて確認する。どちらかが期待と逆の結果になったら
+              スクリプトはエラー終了し、<code class="inline">postStartCommand</code> が失敗してコンテナ起動が止まる。
+              「ルールを書いた」ことと「ルールが実際に効いている」ことは別問題なので、必ず動作テストまでを起動シーケンスに含めている。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="why">
+      <div class="section-head">
+        <span class="section-num">04 / Rationale</span>
+        <h2>なぜここまでやるのか</h2>
+        <p class="section-sub">この構成が前提にしている、少し意地悪な想定を書いておく。</p>
+      </div>
+      <p>
+        generate-deck は `input/` に置かれたmdファイルや貼り付けられた文章を取り込んでスライド化するプロダクトで、
+        Claude Code はユーザーが渡した外部文書をそのまま読む。もしその中に「Claudeへの指示に見せかけたテキスト」
+        （プロンプトインジェクション）が紛れていた場合、Claudeはそれを実際の指示だと誤認して実行してしまう可能性がある。
+      </p>
+      <p>
+        <code class="inline">--dangerously-skip-permissions</code> はまさにその状態で、ファイル削除やコマンド実行が
+        逐一の確認なしに走る。だから「悪意ある指示が紛れ込んだ場合でも、被害がコンテナの中とリポジトリのファイルだけに留まり、
+        ホストPCの他の場所や外部サーバへのデータ持ち出しには広がらない」ことを、設定ファイル側で機械的に保証しておく必要がある。
+        非rootユーザー・専用の認証情報ボリューム・読み取り専用の設定マウント・デフォルト拒否のegress firewallは、
+        すべてこの一点のために積み上げられている。
+      </p>
+      <div class="callout">
+        <p class="callout-label">それでも「完全に安全」ではない</p>
+        <p>
+          リポジトリ自体は読み書き可能でマウントされているため、コンテナ内からファイルやgit履歴を壊すことはできる
+          （バックアップ運用が前提になる）。また許可ドメインの一部は共有CDN上にあり、IPベースの許可だけでは
+          原理的な限界も残る。「ホストPCの他領域には手が届かない」という一線を守ることに主眼を置いた設計であり、
+          リポジトリ自体の保護は別途（リモートへのpush等）担保する必要がある。
+        </p>
+      </div>
+    </section>
+
+    <section id="glossary">
+      <div class="section-head">
+        <span class="section-num">Glossary</span>
+        <h2>最低限の用語集</h2>
+      </div>
+      <dl class="glossary">
+        <div class="gterm"><dt>devcontainer</dt><dd>VS Codeなどが「このフォルダを開発用コンテナの中で開く」ために読む設定規格。devcontainer.jsonが本体。</dd></div>
+        <div class="gterm"><dt>bind mount</dt><dd>ホストの特定ディレクトリを、コンテナ内の指定パスにそのまま見せる仕組み。volumeと違い実体はホスト側にある。</dd></div>
+        <div class="gterm"><dt>named volume</dt><dd>Dockerが管理する独立した保存領域。コンテナを作り直しても中身が消えない。認証情報の永続化に使われる。</dd></div>
+        <div class="gterm"><dt>egress</dt><dd>コンテナ・サーバから外部への「出て行く」通信のこと。対義語はingress（入ってくる通信）。</dd></div>
+        <div class="gterm"><dt>iptables</dt><dd>Linuxカーネルのパケットフィルタを操作するコマンド。「この条件に一致する通信をACCEPT/DROP/REJECTする」というルールを積み上げる。</dd></div>
+        <div class="gterm"><dt>ipset</dt><dd>大量のIPアドレス／CIDRを1つの集合として登録し、iptablesから高速に参照できるようにする仕組み。</dd></div>
+        <div class="gterm"><dt>CIDR</dt><dd><code>192.30.252.0/22</code>のような表記で、単一IPではなく「範囲」を表す。GitHubのIPレンジなどはこの形式で公開される。</dd></div>
+        <div class="gterm"><dt>fail-close / fail-open</dt><dd>処理が失敗したとき、安全側（全遮断）に倒れるのがfail-close、逆に無防備側（全通過）に倒れるのがfail-open。firewallはfail-closeであるべき。</dd></div>
+        <div class="gterm"><dt>capability (NET_ADMIN等)</dt><dd>rootの権限を細かく分割したLinuxカーネルのフラグ。コンテナは既定でほとんどのcapabilityを持たない。</dd></div>
+      </dl>
+    </section>
+
+    <footer>
+      Source: .devcontainer/devcontainer.json · Dockerfile · init-firewall.sh — 2026-07-20 時点のコードを解説
+    </footer>
+  </main>
+</div>

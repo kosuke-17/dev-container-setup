@@ -1,0 +1,64 @@
+{
+  "name": "generate-deck (Claude sandbox)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "TZ": "${localEnv:TZ:Asia/Tokyo}",
+      "CLAUDE_CODE_VERSION": "latest",
+      "GIT_DELTA_VERSION": "0.18.2",
+      "ZSH_IN_DOCKER_VERSION": "1.2.0"
+    }
+  },
+  // init-firewall.sh (iptables/ipset) の実行に必要な権限
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          },
+          "zsh": {
+            "path": "zsh"
+          }
+        }
+      }
+    }
+  },
+  // --dangerously-skip-permissions はrootでは拒否されるため非rootユーザーが必須
+  "remoteUser": "node",
+  "mounts": [
+    // シェル履歴と ~/.claude（認証トークン・設定）をリビルド後も保持
+    "source=claude-deck-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=claude-deck-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    // グローバルCLAUDE.md（projects-wiki参照ルール）だけをread-onlyで共有。
+    // ~/.claude 丸ごとのマウントはホスト認証情報が漏れるため行わない
+    "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/node/.claude/CLAUDE.md,type=bind,readonly",
+    // .devcontainer 自体をread-onlyで上書きマウントする。
+    // workspaceMountがリポジトリ全体をrwでマウントするため、対策がないと
+    // コンテナ内から devcontainer.json / init-firewall.sh を書き換えられ、
+    // 次回リビルド時に任意のホストディレクトリをマウントさせる等に悪用できてしまう。
+    "source=${localWorkspaceFolder}/.devcontainer,target=${containerWorkspaceFolder}/.devcontainer,type=bind,readonly"
+  ],
+  "containerEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+  },
+  // generate-deck の skill / CLAUDE.md はリポジトリ相対パス前提のため、
+  // Obsidian Vault版と違いホストと同一絶対パスに固定する必要はない
+  // （workspaceMount / workspaceFolder は指定せず、Dev Containers のデフォルト
+  // である /workspaces/<リポジトリ名> にマウントさせる）
+  // 起動時にデフォルト拒否のegress firewallを適用（失敗したら起動を止める）
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "waitFor": "postStartCommand"
+}
