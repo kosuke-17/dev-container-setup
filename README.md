@@ -13,13 +13,15 @@
 - ホストの Claude 認証トークンのコンテナへの流出（`~/.claude` は丸ごとマウントせず、`CLAUDE.md` だけ read-only 共有）
 - コンテナ内からの設定ファイル自己書き換え → 次回リビルドでの権限昇格（`.devcontainer` を read-only で上書きマウント）
 - 許可していないドメインへの通信（iptables/ipset によるデフォルト拒否の egress firewall、IPv6 は全遮断）
+- firewall 構築が途中で失敗したときの通信（fail-close。ポリシーDROP + ルールフラッシュで全遮断）
+- ipset 構築中の一時 HTTPS 許可の悪用（`-m owner --uid-owner 0` で root プロセス限定）
 
 **防げないこと（重要）**
 
-- ipset 構築中の一時的な HTTPS 全開放ウィンドウ（`sudo init-firewall.sh` の再実行で任意に再現できる）
-- fail-close の取りこぼし（`exit 1` 経路では ERR trap が発火しない）
+- DNS トンネリング（リゾルバ宛に限定しても再帰リゾルバ経由で外部の権威サーバへ届く）
 - 共有CDN・GitHub 経由のデータ持ち出し（IPベース許可リストの原理的限界）
 - ワークスペース自体の破壊（rw マウントなので `.git` ごと消せる）
+- `xt_owner` が使えないホストでは、一時 HTTPS 許可が全プロセスに開く（警告付きでフォールバック）
 
 **「完全に安全な環境」ではない。** 詳細は `.devcontainer/ai-reviews/` の2本のセキュリティレビューに
 一次情報としてまとめてある。導入前に必ず読むこと。

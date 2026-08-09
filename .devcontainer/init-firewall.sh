@@ -3,20 +3,35 @@ set -euo pipefail  # Exit on error, undefined vars, and pipeline failures
 IFS=$'\n\t'       # Stricter word splitting
 
 # fail-close: スクリプトが途中で失敗したら、firewall未構築のまま起動が続かないよう
-# 即座に全ポリシーをDROPにする（旧版は成功時のみDROPを設定していたため、
+# 即座に全遮断する（旧版は成功時のみDROPを設定していたため、
 # GitHub API取得失敗等で早期終了すると全開放のまま動き続ける穴があった）。
+#
+# ポリシーをDROPにするだけでは不十分。ipset構築中の一時許可
+# （--dport 443 の ACCEPT ルール）が残っていると、ポリシーDROPはそのルールに
+# 勝てず任意宛先へのHTTPSが通り続けてしまう。必ずルールもフラッシュする。
 fail_close() {
+    trap - ERR  # この関数内の失敗で自分自身を再帰的に呼ばない
     echo "ERROR: firewall setup failed midway - dropping all traffic to fail closed" >&2
     iptables -P INPUT DROP
     iptables -P FORWARD DROP
     iptables -P OUTPUT DROP
+    iptables -F
     command -v ip6tables >/dev/null 2>&1 && {
         ip6tables -P INPUT DROP
         ip6tables -P FORWARD DROP
         ip6tables -P OUTPUT DROP
+        ip6tables -F
     }
 }
 trap fail_close ERR
+
+# 明示的な `exit 1` では ERR trap は発火しない（bash の仕様）。
+# エラー終了は必ずこの die 経由にして、fail_close を通してから抜ける。
+die() {
+    echo "ERROR: $*" >&2
+    fail_close
+    exit 1
+}
 
 # 1. Extract Docker DNS info BEFORE any flushing
 DOCKER_DNS_RULES=$(iptables-save -t nat | grep "127\.0\.0\.11" || true)
@@ -76,13 +91,11 @@ iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 # /etc/resolv.conf から実際のnameserverを動的に取得して許可する。
 DNS_SERVERS=$(awk '/^nameserver/ {print $2}' /etc/resolv.conf)
 if [ -z "$DNS_SERVERS" ]; then
-    echo "ERROR: No nameserver found in /etc/resolv.conf" >&2
-    exit 1
+    die "No nameserver found in /etc/resolv.conf"
 fi
 while read -r dns; do
     if [[ ! "$dns" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        echo "ERROR: Invalid nameserver IP in /etc/resolv.conf: $dns" >&2
-        exit 1
+        die "Invalid nameserver IP in /etc/resolv.conf: $dns"
     fi
     echo "Allowing DNS resolver: $dns"
     iptables -A OUTPUT -p udp --dport 53 -d "$dns" -j ACCEPT
@@ -95,9 +108,24 @@ done <<< "$DNS_SERVERS"
 # 通信としてまとめて許可される（ポート番号を問わない）。
 
 # 許可ドメイン群のIP取得中(GitHub API呼び出し・DNS解決)は、まだ
-# allowed-domains ipsetが空のため、一時的にHTTPS(443)のみ全宛先へ許可する。
+# allowed-domains ipsetが空のため、一時的にHTTPS(443)を許可する。
 # ipset構築が終わり次第この一時許可は撤回し、allowed-domains宛のみに絞る。
-iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT
+#
+# ただし全プロセスに開けてはいけない。node ユーザー(= Claude 自身)は sudo で
+# このスクリプトを何度でも再実行でき、そのたびに数秒間の全開放ウィンドウを
+# 任意に再現してデータ持ち出しに使えてしまう。このスクリプト自身は root で
+# 動くため、uid 0 のプロセスに限定すれば機能は保ったまま穴を塞げる。
+#
+# -m owner はカーネルの xt_owner モジュールに依存する。使えない環境で
+# 起動不能にしないよう、事前に試して駄目なら全開放にフォールバックする
+# （その場合は上記の穴が残るため警告を出す）。
+TEMP_HTTPS_RULE=(-p tcp --dport 443 -m owner --uid-owner 0 -j ACCEPT)
+if ! iptables -A OUTPUT "${TEMP_HTTPS_RULE[@]}" 2>/dev/null; then
+    echo "WARNING: iptables -m owner is unavailable - falling back to an unrestricted temporary HTTPS allow" >&2
+    echo "WARNING: non-root processes can exfiltrate during ipset construction on this host" >&2
+    TEMP_HTTPS_RULE=(-p tcp --dport 443 -j ACCEPT)
+    iptables -A OUTPUT "${TEMP_HTTPS_RULE[@]}"
+fi
 
 # Create ipset with CIDR support
 ipset create allowed-domains hash:net
@@ -106,20 +134,17 @@ ipset create allowed-domains hash:net
 echo "Fetching GitHub IP ranges..."
 gh_ranges=$(curl -s https://api.github.com/meta)
 if [ -z "$gh_ranges" ]; then
-    echo "ERROR: Failed to fetch GitHub IP ranges"
-    exit 1
+    die "Failed to fetch GitHub IP ranges"
 fi
 
 if ! echo "$gh_ranges" | jq -e '.web and .api and .git' >/dev/null; then
-    echo "ERROR: GitHub API response missing required fields"
-    exit 1
+    die "GitHub API response missing required fields"
 fi
 
 echo "Processing GitHub IPs..."
 while read -r cidr; do
     if [[ ! "$cidr" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$ ]]; then
-        echo "ERROR: Invalid CIDR range from GitHub meta: $cidr"
-        exit 1
+        die "Invalid CIDR range from GitHub meta: $cidr"
     fi
     echo "Adding GitHub range $cidr"
     ipset add -exist allowed-domains "$cidr"
@@ -156,8 +181,7 @@ for domain in \
 
     while read -r ip; do
         if [[ ! "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            echo "ERROR: Invalid IP from DNS for $domain: $ip"
-            exit 1
+            die "Invalid IP from DNS for $domain: $ip"
         fi
         echo "Adding $ip for $domain"
         ipset add -exist allowed-domains "$ip"
@@ -166,7 +190,7 @@ done
 
 # allowed-domains宛の通信を許可し、ipset構築のために一時的に開けていた
 # HTTPS全宛先許可は撤回する（以後はallowed-domains宛のみに絞る）
-iptables -D OUTPUT -p tcp --dport 443 -j ACCEPT
+iptables -D OUTPUT "${TEMP_HTTPS_RULE[@]}"
 iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
 
 # ホストと同一サブネットへの全許可は行わない。ホスト上で認証なしにlistenして
@@ -179,16 +203,14 @@ iptables -A OUTPUT -j REJECT --reject-with icmp-admin-prohibited
 echo "Firewall configuration complete"
 echo "Verifying firewall rules..."
 if curl --connect-timeout 5 https://example.com >/dev/null 2>&1; then
-    echo "ERROR: Firewall verification failed - was able to reach https://example.com"
-    exit 1
+    die "Firewall verification failed - was able to reach https://example.com"
 else
     echo "Firewall verification passed - unable to reach https://example.com as expected"
 fi
 
 # Verify GitHub API access
 if ! curl --connect-timeout 5 https://api.github.com/zen >/dev/null 2>&1; then
-    echo "ERROR: Firewall verification failed - unable to reach https://api.github.com"
-    exit 1
+    die "Firewall verification failed - unable to reach https://api.github.com"
 else
     echo "Firewall verification passed - able to reach https://api.github.com as expected"
 fi
