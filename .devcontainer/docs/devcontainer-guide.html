@@ -1,4 +1,4 @@
-<title>.devcontainer 解読ノート — generate-deck Sandbox</title>
+<title>.devcontainer 解読ノート — Claude Code Sandbox</title>
 <style>
   :root {
     --bg: #eef1f3;
@@ -477,7 +477,7 @@
             <span class="dbox-label">Host</span>
             <span class="dbox-title">Mac (あなたのPC)</span>
             <ul>
-              <li>generate-deck リポジトリ (~/generate-deck)</li>
+              <li>作業リポジトリ (~/your-repo)</li>
               <li>~/.claude （認証情報）</li>
               <li>~/.ssh, その他すべて</li>
             </ul>
@@ -562,8 +562,8 @@
         <table>
           <thead><tr><th>マウント元</th><th>マウント先</th><th>目的</th></tr></thead>
           <tbody>
-            <tr><td><code>claude-deck-bashhistory-*</code>(volume)</td><td>/commandhistory</td><td>シェル履歴をリビルド後も保持</td></tr>
-            <tr><td><code>claude-deck-config-*</code>(volume)</td><td>/home/node/.claude</td><td>Claude Codeの認証トークンを保持。<b>ホストの~/.claudeとは別物</b>を新規に作る</td></tr>
+            <tr><td><code>claude-sandbox-bashhistory-*</code>(volume)</td><td>/commandhistory</td><td>シェル履歴をリビルド後も保持</td></tr>
+            <tr><td><code>claude-sandbox-claude-config-*</code>(volume)</td><td>/home/node/.claude</td><td>Claude Codeの認証トークンを保持。<b>ホストの~/.claudeとは別物</b>を新規に作る</td></tr>
             <tr><td>~/.claude/CLAUDE.md（read-only bind）</td><td>/home/node/.claude/CLAUDE.md</td><td>グローバル運用ルールだけ共有。読み取り専用なので改変不可</td></tr>
             <tr><td>./.devcontainer（read-only bind）</td><td>.../.devcontainer</td><td>設定ファイル自身を上書きマウントし、コンテナ内から書き換え不可にする</td></tr>
           </tbody>
@@ -907,8 +907,7 @@ curl --connect-timeout 5 https://api.github.com/zen  <span class="c"># → 成�
         <p class="section-sub">この構成が前提にしている、少し意地悪な想定を書いておく。</p>
       </div>
       <p>
-        generate-deck は `input/` に置かれたmdファイルや貼り付けられた文章を取り込んでスライド化するプロダクトで、
-        Claude Code はユーザーが渡した外部文書をそのまま読む。もしその中に「Claudeへの指示に見せかけたテキスト」
+        Claude Code は Web検索やリサーチ結果、外部から取り込んだドキュメントなど、外部由来のテキストをそのまま読み込むことがある。もしその中に「Claudeへの指示に見せかけたテキスト」
         （プロンプトインジェクション）が紛れていた場合、Claudeはそれを実際の指示だと誤認して実行してしまう可能性がある。
       </p>
       <p>

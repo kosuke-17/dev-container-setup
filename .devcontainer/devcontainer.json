@@ -1,5 +1,6 @@
 {
-  "name": "generate-deck (Claude sandbox)",
+  // ★要編集: 導入先リポジトリ名に合わせる（VS Code のウィンドウ表示名になるだけ）
+  "name": "claude-sandbox",
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
@@ -37,11 +38,15 @@
   // --dangerously-skip-permissions はrootでは拒否されるため非rootユーザーが必須
   "remoteUser": "node",
   "mounts": [
-    // シェル履歴と ~/.claude（認証トークン・設定）をリビルド後も保持
-    "source=claude-deck-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-deck-config-${devcontainerId},target=/home/node/.claude,type=volume",
-    // グローバルCLAUDE.md（projects-wiki参照ルール）だけをread-onlyで共有。
-    // ~/.claude 丸ごとのマウントはホスト認証情報が漏れるため行わない
+    // シェル履歴と ~/.claude（認証トークン・設定）をリビルド後も保持。
+    // ★要編集(任意): 先頭のプレフィックスをリポジトリ名にすると
+    // `docker volume ls` でどのプロジェクトのものか判別しやすい
+    "source=claude-sandbox-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=claude-sandbox-claude-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    // グローバルCLAUDE.mdだけをread-onlyで共有。
+    // ~/.claude 丸ごとのマウントはホスト認証情報が漏れるため行わない。
+    // ホストに ~/.claude/CLAUDE.md が無いとコンテナ作成に失敗するため、
+    // 使わない場合はこの1行を削除する
     "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/node/.claude/CLAUDE.md,type=bind,readonly",
     // .devcontainer 自体をread-onlyで上書きマウントする。
     // workspaceMountがリポジトリ全体をrwでマウントするため、対策がないと
@@ -54,11 +59,19 @@
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
   },
-  // generate-deck の skill / CLAUDE.md はリポジトリ相対パス前提のため、
-  // Obsidian Vault版と違いホストと同一絶対パスに固定する必要はない
-  // （workspaceMount / workspaceFolder は指定せず、Dev Containers のデフォルト
-  // である /workspaces/<リポジトリ名> にマウントさせる）
-  // 起動時にデフォルト拒否のegress firewallを適用（失敗したら起動を止める）
+  // workspaceMount / workspaceFolder は指定せず、Dev Containers のデフォルトである
+  // /workspaces/<リポジトリ名> にマウントさせる。
+  // skill や CLAUDE.md がホストの絶対パスを前提にしている場合だけ、
+  // workspaceMount でホストと同一の絶対パスに固定する必要がある。
+
+  // ★要編集(任意): dev サーバー等をホストのブラウザから見たい場合にポートを追加する
+  // "forwardPorts": [3000],
+  // "portsAttributes": { "3000": { "label": "dev server" } },
+
+  // ★要編集(任意): 初回コンテナ作成時に依存関係をインストールしたい場合に指定する
+  // "postCreateCommand": "npm install",
+
+  // 起動時にデフォルト拒否のegress firewallを適用する
   "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
   "waitFor": "postStartCommand"
 }

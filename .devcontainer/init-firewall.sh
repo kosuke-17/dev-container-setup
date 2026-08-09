@@ -127,6 +127,9 @@ done < <(echo "$gh_ranges" | jq -r '(.web + .api + .git + .pages)[]' | aggregate
 
 # Resolve and add other allowed domains
 # claude.ai / console.anthropic.com はOAuthログインのトークン交換に必要
+# fonts.googleapis.com / fonts.gstatic.com は Next.js の next/font/google
+# などがビルド/開発時にフォントをフェッチするため必要。
+# 使わないなら削って許可リストを最小化してよい
 for domain in \
     "registry.npmjs.org" \
     "api.anthropic.com" \
@@ -139,7 +142,9 @@ for domain in \
     "raw.githubusercontent.com" \
     "marketplace.visualstudio.com" \
     "vscode.blob.core.windows.net" \
-    "update.code.visualstudio.com"; do
+    "update.code.visualstudio.com" \
+    "fonts.googleapis.com" \
+    "fonts.gstatic.com"; do
     echo "Resolving $domain..."
     ips=$(dig +noall +answer A "$domain" | awk '$4 == "A" {print $5}')
     if [ -z "$ips" ]; then
